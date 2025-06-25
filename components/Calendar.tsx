@@ -1,10 +1,22 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { PanGestureHandler, PanGestureHandlerGestureEvent } from 'react-native-gesture-handler';
+import Animated, {
+  runOnJS,
+  useAnimatedGestureHandler,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 
 interface CalendarProps {
   onDateSelect?: (date: Date) => void;
 }
+
+type GestureContext = {
+  startX: number;
+};
 
 export default function Calendar({ onDateSelect }: CalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -13,7 +25,6 @@ export default function Calendar({ onDateSelect }: CalendarProps) {
   const getFirstDayOfMonth = (date: Date) => {
     return new Date(date.getFullYear(), date.getMonth(), 1);
   };
-
   const getLastDayOfMonth = (date: Date) => {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0);
   };
@@ -21,18 +32,42 @@ export default function Calendar({ onDateSelect }: CalendarProps) {
   const goToPreviousMonth = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
   };
-
   const goToNextMonth = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
   };
+
+  const translateX = useSharedValue(0);
+
+  const gestureHandler = useAnimatedGestureHandler<
+    PanGestureHandlerGestureEvent,
+    GestureContext
+  >({
+    onStart: (_, ctx) => {
+      ctx.startX = translateX.value;
+    },
+    onActive: (event, ctx) => {
+      translateX.value = ctx.startX + event.translationX;
+    },
+    onEnd: event => {
+      const THRESHOLD = 50;
+      if (event.translationX > THRESHOLD) {
+        runOnJS(goToPreviousMonth)();
+      } else if (event.translationX < -THRESHOLD) {
+        runOnJS(goToNextMonth)();
+      }
+      translateX.value = withTiming(0);
+    },
+  });
+
+  const panStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+  }));
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
-
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
   const generateCalendarDays = () => {
     const firstDay = getFirstDayOfMonth(currentDate);
     const lastDay = getLastDayOfMonth(currentDate);
@@ -61,7 +96,6 @@ export default function Calendar({ onDateSelect }: CalendarProps) {
 
     return days;
   };
-
   const handleDatePress = (date: Date) => {
     setSelectedDate(date);
     if (onDateSelect) {
@@ -99,29 +133,31 @@ export default function Calendar({ onDateSelect }: CalendarProps) {
         ))}
       </View>
 
-      <View style={styles.calendarGrid}>
-        {calendarDays.map((day, index) => (
-          <TouchableOpacity
-            key={index}
-            style={[
-              styles.dayCell,
-              !day.isCurrentMonth && styles.otherMonthDay,
-            ]}
-            onPress={() => handleDatePress(day.date)}
-          >
-            <Text style={[
-              styles.dayText,
-              !day.isCurrentMonth && styles.otherMonthText,
-              day.isToday && !selectedDate && styles.todayText,
-              day.isSelected && styles.selectedText
-            ]}>
-              {day.date.getDate()}
-            </Text>
-            {day.isToday && !selectedDate && <View style={styles.todayBorder} />}
-            {day.isSelected && <View style={styles.selectedBorder} />}
-          </TouchableOpacity>
-        ))}
-      </View>
+      <PanGestureHandler onGestureEvent={gestureHandler}>
+        <Animated.View style={[styles.calendarGrid, panStyle]}>
+          {calendarDays.map((day, index) => (
+            <TouchableOpacity
+              key={index}
+              style={[
+                styles.dayCell,
+                !day.isCurrentMonth && styles.otherMonthDay,
+              ]}
+              onPress={() => handleDatePress(day.date)}
+            >
+              <Text style={[
+                styles.dayText,
+                !day.isCurrentMonth && styles.otherMonthText,
+                day.isToday && !selectedDate && styles.todayText,
+                day.isSelected && styles.selectedText
+              ]}>
+                {day.date.getDate()}
+              </Text>
+              {day.isToday && !selectedDate && <View style={styles.todayBorder} />}
+              {day.isSelected && <View style={styles.selectedBorder} />}
+            </TouchableOpacity>
+          ))}
+        </Animated.View>
+      </PanGestureHandler>
     </View>
   );
 }
