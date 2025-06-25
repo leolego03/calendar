@@ -17,14 +17,16 @@ export default function Calendar({ onDateSelect }: CalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isExpanded, setIsExpanded] = useState(true);
-  const [weekOffset, setWeekOffset] = useState(0);
+  const [weekDate, setWeekDate] = useState<Date>(selectedDate ?? new Date());
 
   const goToPreviousMonth = () =>
     setCurrentDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1));
   const goToNextMonth = () =>
     setCurrentDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1));
-  const goToPreviousWeek = () => setWeekOffset(o => o - 1);
-  const goToNextWeek     = () => setWeekOffset(o => o + 1);
+  const goToPreviousWeek = () =>
+    setWeekDate(d => new Date(d.getFullYear(), d.getMonth(), d.getDate() - 7));
+  const goToNextWeek = () =>
+    setWeekDate(d => new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7));
 
   const translateX = useSharedValue(0);
   const startX     = useSharedValue(0);
@@ -88,31 +90,45 @@ export default function Calendar({ onDateSelect }: CalendarProps) {
   const displayedDays = isExpanded
     ? monthDays
     : (() => {
-        const refDate = selectedDate ?? new Date();
-        const idx = monthDays.findIndex(d =>
-          d.date.toDateString() === refDate.toDateString()
-        );
-        const baseRow = idx >= 0 ? Math.floor(idx / 7) : 0;
-        const rowOffset = baseRow + weekOffset;
-        const start = rowOffset * 7;
-        return monthDays.slice(start, start + 7);
+        const start = new Date(weekDate);
+        start.setDate(start.getDate() - start.getDay());
+        return Array.from({ length: 7 }).map((_, i) => {
+          const d = new Date(start);
+          d.setDate(start.getDate() + i);
+          return {
+            date: d,
+            isCurrentMonth: d.getMonth() === currentDate.getMonth(),
+            isToday: d.toDateString() === new Date().toDateString(),
+            isSelected: selectedDate?.toDateString() === d.toDateString(),
+          };
+        });
       })();
+  const headerDate = isExpanded
+    ? currentDate
+    : (displayedDays[0]?.date ?? currentDate);
 
   const handleDatePress = (d: Date) => {
     setSelectedDate(d);
+    setWeekDate(d);
     onDateSelect?.(d);
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={goToPreviousMonth} style={styles.arrowButton}>
+        <TouchableOpacity
+          onPress={() => isExpanded ? goToPreviousMonth() : goToPreviousWeek()}
+          style={styles.arrowButton}
+        >
           <Ionicons name="chevron-back" size={24} color="#55BBEE" />
         </TouchableOpacity>
         <Text style={styles.monthYearText}>
-          {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
+          {monthNames[headerDate.getMonth()]} {headerDate.getFullYear()}
         </Text>
-        <TouchableOpacity onPress={goToNextMonth} style={styles.arrowButton}>
+        <TouchableOpacity
+          onPress={() => isExpanded ? goToNextMonth() : goToNextWeek()}
+          style={styles.arrowButton}
+        >
           <Ionicons name="chevron-forward" size={24} color="#55BBEE" />
         </TouchableOpacity>
       </View>
