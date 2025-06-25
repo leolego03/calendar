@@ -3,10 +3,13 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
+  FadeInDown,
+  FadeOutUp,
+  LinearTransition,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
-  withTiming,
+  withTiming
 } from 'react-native-reanimated';
 
 interface CalendarProps {
@@ -148,28 +151,41 @@ export default function Calendar({ onDateSelect }: CalendarProps) {
       </View>
 
       <GestureDetector gesture={horizontalGesture}>
-        <Animated.View style={[styles.calendarGrid, panStyle]}>
-          {displayedDays.map((day, idx) => (
-            <TouchableOpacity
-              key={idx}
-              style={[styles.dayCell, !day.isCurrentMonth && styles.otherMonthDay]}
-              onPress={() => handleDatePress(day.date)}
-            >
-              <Text style={[
-                styles.dayText,
-                day.isToday && selectedDate === null && styles.todayText,
-                day.isSelected && styles.selectedText,
-              ]}>
-                {day.date.getDate()}
-              </Text>
-              {day.isToday && selectedDate === null && (
-                <View style={styles.todayBorder} />
-              )}
-              {day.isSelected && (
-                <View style={styles.selectedBorder} />
-              )}
-            </TouchableOpacity>
-          ))}
+        <Animated.View layout={LinearTransition} style={styles.calendarWrapper}>
+          <Animated.View style={[styles.calendarGrid, panStyle]}>
+            {displayedDays.map((day, idx) => (
+              <Animated.View
+                key={idx}
+                layout={LinearTransition}
+                style={styles.dayCellWrapper}
+                entering={FadeInDown.duration(200)}
+                exiting={FadeOutUp.duration(200)}
+              >
+                <Animated.View style={styles.dayCell}>
+                  <TouchableOpacity
+                    style={styles.dayContent}
+                    onPress={() => handleDatePress(day.date)}
+                  >
+                    <Text
+                      style={[
+                        styles.dayText,
+                        day.isToday && selectedDate === null && styles.todayText,
+                        day.isSelected && styles.selectedText,
+                      ]}
+                    >
+                      {day.date.getDate()}
+                    </Text>
+                    {day.isToday && selectedDate === null && (
+                      <View style={styles.todayBorder} />
+                    )}
+                    {day.isSelected && (
+                      <View style={styles.selectedBorder} />
+                    )}
+                  </TouchableOpacity>
+                </Animated.View>
+              </Animated.View>
+            ))}
+          </Animated.View>
         </Animated.View>
       </GestureDetector>
 
@@ -190,13 +206,16 @@ const styles = StyleSheet.create({
   weekDayText: { fontSize: 14, fontWeight: '600', color: '#B8C1CC' },
   sundayText: { color: '#DE7673' },
   saturdayText: { color: '#529DF8' },
-  calendarGrid: { flexDirection: 'row', flexWrap: 'wrap' },
-  dayCell: { width: '14.28%', aspectRatio: 1, justifyContent: 'center', alignItems: 'center', position: 'relative' },
-  otherMonthDay: { opacity: 0.3 },
+  calendarWrapper: { width: '100%', overflow: 'hidden' },
+  calendarGrid: { width: '100%', flexDirection: 'row', flexWrap: 'wrap' },
+  dayCellWrapper: { width: '14.28%', aspectRatio: 1, overflow: 'hidden' },
+  dayCell: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  dayContent: { flex: 1, justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%' },
   dayText: { fontSize: 16, color: '#333' },
   todayText: { fontWeight: 'bold' },
   selectedText: { fontWeight: 'bold' },
+  otherMonthDay: { opacity: 0.3 },
   todayBorder: { position: 'absolute', width: 32, height: 32, borderRadius: 16, borderWidth: 1, borderColor: '#3371C1', top: '50%', left: '50%', marginTop: -16, marginLeft: -16 },
   selectedBorder: { position: 'absolute', width: 32, height: 32, borderRadius: 16, borderWidth: 1, borderColor: '#3371C1', top: '50%', left: '50%', marginTop: -16, marginLeft: -16 },
-  emptySpace: { flex: 1 },
+  emptySpace: { flex: 1 }
 });
