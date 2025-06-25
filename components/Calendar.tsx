@@ -1,22 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { PanGestureHandler, PanGestureHandlerGestureEvent } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   runOnJS,
-  useAnimatedGestureHandler,
   useAnimatedStyle,
   useSharedValue,
-  withTiming,
+  withTiming
 } from 'react-native-reanimated';
 
 interface CalendarProps {
   onDateSelect?: (date: Date) => void;
 }
-
-type GestureContext = {
-  startX: number;
-};
 
 export default function Calendar({ onDateSelect }: CalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -37,27 +32,21 @@ export default function Calendar({ onDateSelect }: CalendarProps) {
   };
 
   const translateX = useSharedValue(0);
+  const startX = useSharedValue(0);
 
-  const gestureHandler = useAnimatedGestureHandler<
-    PanGestureHandlerGestureEvent,
-    GestureContext
-  >({
-    onStart: (_, ctx) => {
-      ctx.startX = translateX.value;
-    },
-    onActive: (event, ctx) => {
-      translateX.value = ctx.startX + event.translationX;
-    },
-    onEnd: event => {
-      const THRESHOLD = 50;
-      if (event.translationX > THRESHOLD) {
-        runOnJS(goToPreviousMonth)();
-      } else if (event.translationX < -THRESHOLD) {
-        runOnJS(goToNextMonth)();
-      }
+  const panGesture = Gesture.Pan()
+    .onBegin(() => {
+      startX.value = translateX.value;
+    })
+    .onUpdate(e => {
+      translateX.value = startX.value + e.translationX;
+    })
+    .onEnd(e => {
+      const TH = 50;
+      if (e.translationX > TH) runOnJS(goToPreviousMonth)();
+      else if (e.translationX < -TH) runOnJS(goToNextMonth)();
       translateX.value = withTiming(0);
-    },
-  });
+    });
 
   const panStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],
@@ -133,7 +122,7 @@ export default function Calendar({ onDateSelect }: CalendarProps) {
         ))}
       </View>
 
-      <PanGestureHandler onGestureEvent={gestureHandler}>
+      <GestureDetector gesture={panGesture}>
         <Animated.View style={[styles.calendarGrid, panStyle]}>
           {calendarDays.map((day, index) => (
             <TouchableOpacity
@@ -157,7 +146,7 @@ export default function Calendar({ onDateSelect }: CalendarProps) {
             </TouchableOpacity>
           ))}
         </Animated.View>
-      </PanGestureHandler>
+      </GestureDetector>
     </View>
   );
 }
