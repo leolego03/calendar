@@ -158,8 +158,8 @@ export default function Calendar({ onDateSelect }: CalendarProps) {
                 key={idx}
                 layout={LinearTransition}
                 style={styles.dayCellWrapper}
-                entering={FadeInDown.duration(200)}
-                exiting={FadeOutUp.duration(200)}
+                entering={FadeInDown.duration(600)}
+                exiting={FadeOutUp.duration(600)}
               >
                 <Animated.View style={styles.dayCell}>
                   <TouchableOpacity
